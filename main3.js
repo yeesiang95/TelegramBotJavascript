@@ -4,15 +4,15 @@ const TelegramBot = require("node-telegram-bot-api");
 const { getData } = require("./dataFetch.js");
 require("dotenv").config();
 
-const token = process.env.FIVE_MIN_BOT;
+const token = process.env.ONE_HOUR_BOT;
 const bot = new TelegramBot(token, { polling: true });
 
 // Store jobs in a Map to manage multiple chats
 const jobs = new Map();
 
 async function processSymbol(exchange, symbol) {
-  const timeFrame1 = "1m";
-  const timeFrame2 = "5m";
+  const timeFrame1 = "5m";
+  const timeFrame2 = "1h";
   const since = exchange.parse8601(new Date().getTime());
 
   const short = await getData(exchange, symbol, timeFrame1, since);
