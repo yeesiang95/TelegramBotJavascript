@@ -24,12 +24,12 @@ function calculateBollingerBands(closingPrices) {
   };
 }
 
-function getPricePct(currentPrice, bbData, trend) {
+function getPricePct(currentPrice, bbData, trend, symbol) {
   const priceDiff = currentPrice - bbData;
   const pctDiff = (priceDiff / bbData) * 100;
   const roundedValue = pctDiff.toFixed(2);
   const text = `${symbol} - ${trend} (${roundedValue})`;
-  return { text, trend };
+  return { bollingerValue: roundedValue, trend };
 }
 
 function checkPriceVsBollinger(currentPrice, bollingerData, symbol) {
@@ -41,9 +41,9 @@ function checkPriceVsBollinger(currentPrice, bollingerData, symbol) {
     : null;
 
   if (bbHigh && currentPrice > bbHigh) {
-    return getPricePct(currentPrice, bbHigh, "H");
+    return getPricePct(currentPrice, bbHigh, "H", symbol);
   } else if (bbLow && currentPrice < bbLow) {
-    return getPricePct(currentPrice, bbLow, "L");
+    return getPricePct(currentPrice, bbLow, "L", symbol);
   }
   return null;
 }

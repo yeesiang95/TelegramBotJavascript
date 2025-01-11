@@ -1,5 +1,8 @@
-const { calculateBollingerBands } = require("./bollenger");
-const { calculateMACD } = require("./macd");
+const {
+  calculateBollingerBands,
+  checkPriceVsBollinger,
+} = require("./bollenger");
+const { calculateMACD, checkMacdDivergence } = require("./macd");
 
 async function fetchOHLCV(exchange, symbol, timeframe, since) {
   try {
@@ -29,28 +32,50 @@ async function getCurrentPrice(exchange, symbol) {
 async function getData(exchange, symbol, timeframe, since) {
   const historicalData = await fetchOHLCV(exchange, symbol, timeframe, since);
   const currentPrice = await getCurrentPrice(exchange, symbol);
-
   const closingPrices = historicalData.map((item) => item.close);
   const bollengerData = calculateBollingerBands(closingPrices);
 
   const macdData = calculateMACD(closingPrices);
-  const res = checkPriceAction(currentPrice, bollengerData, symbol, macdData);
-  console.log(macdData[macdData.length - 1].macdLine);
+  const res = checkPriceAction(
+    currentPrice,
+    bollengerData,
+    symbol,
+    macdData,
+    historicalData,
+    timeframe
+  );
+
+  return res;
 }
 
-function checkPriceAction(currentPrice, bollingerData, symbol, macdData) {
+function checkPriceAction(
+  currentPrice,
+  bollingerData,
+  symbol,
+  macdData,
+  historicalData,
+  timeframe
+) {
   const result = checkPriceVsBollinger(currentPrice, bollingerData, symbol);
 
   if (!result) {
     return null;
   }
 
-  const res = checkMACDDivergence(
+  const res = checkMacdDivergence(
     macdData,
     result.trend,
     historicalData,
-    bollingerData
+    bollingerData,
+    currentPrice,
+    symbol
   );
+  return {
+    isOutBollengerBand: true,
+    macdDivergence: res,
+    trend: result.trend,
+    bollengerValue: result.bollingerValue,
+  };
 }
 
 module.exports = { getData, fetchOHLCV };
