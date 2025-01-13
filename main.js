@@ -10,6 +10,26 @@ const bot = new TelegramBot(token, { polling: true });
 // Store jobs in a Map to manage multiple chats
 const jobs = new Map();
 
+function getText(timeframe, isMacdDivergence, isRsiDivergence, isUoDivergence) {
+  if (!isMacdDivergence && !isRsiDivergence && !isUoDivergence) {
+    return "";
+  }
+
+  const arr = [];
+  if (isMacdDivergence) {
+    arr.push("🚀");
+  }
+  if (isRsiDivergence) {
+    arr.push("R");
+  }
+
+  if (isUoDivergence) {
+    arr.push("U");
+  }
+
+  return `[${timeframe}: ${arr.toString()}]`;
+}
+
 async function processSymbol(exchange, symbol) {
   const timeFrame1 = "1m";
   const timeFrame2 = "5m";
@@ -18,12 +38,20 @@ async function processSymbol(exchange, symbol) {
   const short = await getData(exchange, symbol, timeFrame1, since);
   const long = await getData(exchange, symbol, timeFrame2, since);
 
-  if (short && long) {
-    console.log(short.macdDivergence);
-    console.log(long.macdDivergence);
-    const shortText = short.macdDivergence ? `${timeFrame1}:🚀` : "";
-    const longText = long.macdDivergence ? `${timeFrame2}:🚀` : "";
-    return `${symbol.split("/")[0]} - ${short.trend} ${shortText} ${longText} ${
+  if (short && long && short.trend === long.trend) {
+    const shortText = getText(
+      timeFrame1,
+      short.isMacdDivergence,
+      short.isRsiDivergence,
+      short.isUoDivergence
+    );
+    const longText = getText(
+      timeFrame2,
+      long.isMacdDivergence,
+      long.isRsiDivergence,
+      long.isUoDivergence
+    );
+    return `${symbol.split("/")[0]} - ${long.trend} ${shortText} ${longText} ${
       long.bollengerValue
     }`;
   }
@@ -41,8 +69,10 @@ async function jobFunction(chatId) {
   const ohlcvData = symbols.map((symbol) => processSymbol(exchange, symbol));
 
   const results = await Promise.all(ohlcvData);
-  const filteredResult = results.filter((item) => item !== "");
-  console.log(filteredResult);
+  const filteredResult = results
+    .filter((item) => item !== "")
+    .sort((a, b) => b.length - a.length);
+
   if (filteredResult.length !== 0) {
     const response = filteredResult.join("\n");
     bot.sendMessage(chatId, response);
@@ -57,7 +87,7 @@ function startJob(chatId) {
 
   const job = setInterval(() => {
     jobFunction(chatId);
-  }, 120000); // 120000 ms = 2 minutes
+  }, 90000); // 120000 ms = 2 minutes
   jobs.set(chatId, job);
 }
 

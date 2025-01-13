@@ -1,3 +1,6 @@
+const { checkRsiPivotHigh, checkRsiPivotLow } = require("./rsi");
+const { checkUoPivotHigh, checkUoPivotLow } = require("./uo");
+
 function calculateEMA(data, period) {
   const k = 2 / (period + 1); // Smoothing factor
   let emaArray = [];
@@ -32,20 +35,38 @@ function calculateMACD(closingPrices) {
   }));
 }
 
-function checkMacdDivergence(macd, trend, histData, bollingerData) {
+function checkMacdDivergence(
+  macd,
+  trend,
+  histData,
+  bollingerData,
+  rsiData,
+  uoData
+) {
   const latestMACD = macd.slice(-100);
+  const latestRsi = rsiData.slice(-100);
   const latestHist = histData.slice(-100);
+  const latestUo = uoData.slice(-100);
   const latestBollinger =
     trend === "H"
       ? bollingerData.bollingerHigh.slice(-100)
       : bollingerData.bollingerLow.slice(-100);
-
-  const isDivergence =
+  const isMacdDivergence =
     trend === "H"
       ? checkMacdPivotHigh(latestHist, latestMACD, latestBollinger)
       : checkMacdPivotLow(latestHist, latestMACD, latestBollinger);
 
-  return isDivergence;
+  const isRsiDivergence =
+    trend === "H"
+      ? checkRsiPivotHigh(latestHist, latestRsi, latestBollinger)
+      : checkRsiPivotLow(latestHist, latestRsi, latestBollinger);
+
+  const isUoDivergence =
+    trend === "H"
+      ? checkUoPivotHigh(latestHist, latestUo, latestBollinger)
+      : checkUoPivotLow(latestHist, latestUo, latestBollinger);
+
+  return { isMacdDivergence, isRsiDivergence, isUoDivergence };
 }
 
 function checkMacdPivotHigh(data, macd, bollenger) {

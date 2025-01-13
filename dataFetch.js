@@ -3,6 +3,11 @@ const {
   checkPriceVsBollinger,
 } = require("./bollenger");
 const { calculateMACD, checkMacdDivergence } = require("./macd");
+const { calculateRSI } = require("./rsi");
+const { RSI } = require("technicalindicators");
+const { calculateUO } = require("./uo");
+
+const rsiPeriod = 14;
 
 async function fetchOHLCV(exchange, symbol, timeframe, since) {
   try {
@@ -35,14 +40,12 @@ async function getData(exchange, symbol, timeframe, since) {
   const closingPrices = historicalData.map((item) => item.close);
   const bollengerData = calculateBollingerBands(closingPrices);
 
-  const macdData = calculateMACD(closingPrices);
   const res = checkPriceAction(
     currentPrice,
     bollengerData,
     symbol,
-    macdData,
     historicalData,
-    timeframe
+    closingPrices
   );
 
   return res;
@@ -52,9 +55,8 @@ function checkPriceAction(
   currentPrice,
   bollingerData,
   symbol,
-  macdData,
   historicalData,
-  timeframe
+  closingPrices
 ) {
   const result = checkPriceVsBollinger(currentPrice, bollingerData, symbol);
 
@@ -62,17 +64,23 @@ function checkPriceAction(
     return null;
   }
 
+  const rsiData = RSI.calculate({ values: closingPrices, period: rsiPeriod });
+  const macdData = calculateMACD(closingPrices);
+  const uoData = calculateUO(historicalData);
+
   const res = checkMacdDivergence(
     macdData,
     result.trend,
     historicalData,
     bollingerData,
-    currentPrice,
-    symbol
+    rsiData,
+    uoData
   );
   return {
     isOutBollengerBand: true,
-    macdDivergence: res,
+    isMacdDivergence: res.isMacdDivergence,
+    isRsiDivergence: res.isRsiDivergence,
+    isUoDivergence: res.isUoDivergence,
     trend: result.trend,
     bollengerValue: result.bollingerValue,
   };
