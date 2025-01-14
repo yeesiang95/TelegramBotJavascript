@@ -30,6 +30,34 @@ function getText(timeframe, isMacdDivergence, isRsiDivergence, isUoDivergence) {
   return `[${timeframe}: ${arr.toString()}]`;
 }
 
+function getPremiumText(value) {
+  const num = value * 100;
+  if (num < 0.1) {
+    return "";
+  }
+
+  return num >= 0.2 ? "✅✅" : "✅";
+}
+
+async function getPremiumIndex(symbol, interval = "1m", trend) {
+  const sym = symbol.replace("/", "");
+  const url = `https://fapi.binance.com/fapi/v1/premiumIndexKlines?symbol=${sym}&interval=${interval}`;
+
+  const response = await fetch(url);
+  const data = await response.json();
+  const latestData = data[data.length - 1];
+  const secondLatestData = data[data.length - 2];
+
+  const latestLow = latestData[3];
+  const secondLow = secondLatestData[3];
+  const latestHigh = latestData[2];
+  const secondHigh = secondLatestData[2];
+  const low = latestLow > secondLow ? secondLow : latestLow;
+  const high = latestHigh > secondHigh ? latestHigh : secondHigh;
+  const trendPremium = trend === "L" ? low : high;
+  return getPremiumText(trendPremium);
+}
+
 async function processSymbol(exchange, symbol) {
   const timeFrame1 = "1m";
   const timeFrame2 = "5m";
@@ -37,8 +65,8 @@ async function processSymbol(exchange, symbol) {
 
   const short = await getData(exchange, symbol, timeFrame1, since);
   const long = await getData(exchange, symbol, timeFrame2, since);
-
   if (short && long && short.trend === long.trend) {
+    const premiumText = await getPremiumIndex(symbol, "1m", long.trend);
     const shortText = getText(
       timeFrame1,
       short.isMacdDivergence,
@@ -51,9 +79,8 @@ async function processSymbol(exchange, symbol) {
       long.isRsiDivergence,
       long.isUoDivergence
     );
-    return `${symbol.split("/")[0]} - ${long.trend} ${shortText} ${longText} ${
-      long.bollengerValue
-    }`;
+    const shortSym = symbol.split("/")[0];
+    return `${premiumText}${shortSym} - ${long.trend} ${shortText} ${longText} ${long.bollengerValue}`;
   }
 
   return "";
