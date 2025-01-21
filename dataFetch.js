@@ -9,9 +9,15 @@ const { calculateUO } = require("./uo");
 
 const rsiPeriod = 14;
 
-async function fetchOHLCV(exchange, symbol, timeframe, since) {
+async function fetchOHLCV(exchange, symbol, timeframe) {
   try {
-    const ohlcv = await exchange.fetchOHLCV(symbol, timeframe, since);
+    const limit = 250;
+    const ohlcv = await exchange.fetchOHLCV(
+      symbol,
+      timeframe,
+      undefined,
+      limit
+    );
     return ohlcv.map((candle) => ({
       timestamp: candle[0],
       open: candle[1],

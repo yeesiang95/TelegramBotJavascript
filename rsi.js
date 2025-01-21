@@ -40,16 +40,17 @@ function checkRsiPivotHigh(data, rsi, bollenger) {
   const arr = [];
   const latestData = data[data.length - 1];
   const latestRsi = rsi[rsi.length - 1];
-  for (let i = data.length - 3; i >= 3; i--) {
+  for (let i = data.length - 4; i >= 4; i--) {
     const currentHist = data[i];
     if (currentHist.close > latestData.high) {
       break;
     } else if (
       data[i - 1].high <= currentHist.high &&
       data[i - 2].high <= currentHist.high &&
+      data[i - 3].high <= currentHist.high &&
       data[i + 1].high <= currentHist.high &&
       data[i + 2].high <= currentHist.high &&
-      currentHist.high >= bollenger[i]
+      data[i + 3].high <= currentHist.high
     ) {
       const currentRsi = rsi[i];
       arr.push({
@@ -85,7 +86,7 @@ function checkRsiPivotLow(data, rsi, bollenger) {
   const latestData = data[data.length - 1];
   const latestRsi = rsi[rsi.length - 1];
 
-  for (let i = data.length - 3; i >= 3; i--) {
+  for (let i = data.length - 4; i >= 4; i--) {
     const currentHist = data[i];
 
     if (currentHist.close < latestData.low) {
@@ -93,9 +94,10 @@ function checkRsiPivotLow(data, rsi, bollenger) {
     } else if (
       data[i - 1].low >= currentHist.low &&
       data[i - 2].low >= currentHist.low &&
+      data[i - 3].low >= currentHist.low &&
       data[i + 1].low >= currentHist.low &&
       data[i + 2].low >= currentHist.low &&
-      currentHist.low <= bollenger[i]
+      data[i + 3].low >= currentHist.low
     ) {
       const currentRsi = rsi[i];
       arr.push({

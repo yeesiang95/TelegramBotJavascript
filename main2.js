@@ -30,13 +30,17 @@ function getText(timeframe, isMacdDivergence, isRsiDivergence, isUoDivergence) {
   return `[${timeframe}: ${arr.toString()}]`;
 }
 
+function getValue(isMacdDivergence, isRsiDivergence, isUoDivergence) {
+  return isMacdDivergence + isRsiDivergence + isUoDivergence;
+}
+
 async function processSymbol(exchange, symbol) {
   const timeFrame1 = "1m";
   const timeFrame2 = "15m";
-  const since = exchange.parse8601(new Date().getTime());
+  // const timeFrame3 = "1m";
 
-  const short = await getData(exchange, symbol, timeFrame1, since);
-  const long = await getData(exchange, symbol, timeFrame2, since);
+  const short = await getData(exchange, symbol, timeFrame1);
+  const long = await getData(exchange, symbol, timeFrame2);
 
   if (short && long && short.trend === long.trend) {
     const shortText = getText(
@@ -51,9 +55,36 @@ async function processSymbol(exchange, symbol) {
       long.isRsiDivergence,
       long.isUoDivergence
     );
-    return `${symbol.split("/")[0]} - ${long.trend} ${shortText} ${longText} ${
-      long.bollengerValue
-    }`;
+
+    const shortValue = getValue(
+      short.isMacdDivergence,
+      short.isRsiDivergence,
+      short.isUoDivergence
+    );
+
+    const longValue = getValue(
+      long.isMacdDivergence,
+      long.isRsiDivergence,
+      long.isUoDivergence
+    );
+
+    // const superShort = await getData(exchange, symbol, timeFrame3);
+    // const superShortText = superShort
+    //   ? getText(
+    //       timeFrame3,
+    //       superShort.isMacdDivergence,
+    //       superShort.isRsiDivergence,
+    //       superShort.isUoDivergence
+    //     )
+    //   : "";
+
+    if (shortValue >= 2 && longValue >= 2) {
+      return `${symbol.split("/")[0]} - ${
+        long.trend
+      } ${longText} ${shortText} ${long.bollengerValue}`;
+    } else {
+      return "";
+    }
   }
 
   return "";

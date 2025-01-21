@@ -31,29 +31,55 @@ function getText(timeframe, isMacdDivergence, isRsiDivergence, isUoDivergence) {
 }
 
 async function processSymbol(exchange, symbol) {
-  const timeFrame1 = "15m";
+  const timeFrame1 = "1h";
   const timeFrame2 = "4h";
+  const timeFrame3 = "1d";
   const since = exchange.parse8601(new Date().getTime());
 
-  const short = await getData(exchange, symbol, timeFrame1, since);
-  const long = await getData(exchange, symbol, timeFrame2, since);
+  const short = await getData(exchange, symbol, timeFrame1);
+  const long = await getData(exchange, symbol, timeFrame2);
 
-  if (short && long && short.trend === long.trend) {
-    const shortText = getText(
-      timeFrame1,
-      short.isMacdDivergence,
-      short.isRsiDivergence,
-      short.isUoDivergence
-    );
-    const longText = getText(
-      timeFrame2,
-      long.isMacdDivergence,
-      long.isRsiDivergence,
-      long.isUoDivergence
-    );
-    return `${symbol.split("/")[0]} - ${long.trend} ${shortText} ${longText} ${
-      long.bollengerValue
-    }`;
+  if (short || long) {
+    const shortText = short
+      ? getText(
+          timeFrame1,
+          short.isMacdDivergence,
+          short.isRsiDivergence,
+          short.isUoDivergence
+        )
+      : "";
+    const longText = long
+      ? getText(
+          timeFrame2,
+          long.isMacdDivergence,
+          long.isRsiDivergence,
+          long.isUoDivergence
+        )
+      : "";
+
+    const trend = short ? short.trend : long ? long.trend : "";
+    const value = short
+      ? short.bollengerValue
+      : long
+      ? long.bollengerValue
+      : "";
+
+    if (shortText.length === 0 && longText.length === 0) {
+      return "";
+    }
+
+    const superLong = await getData(exchange, symbol, timeFrame3);
+    const superLongText = superLong
+      ? getText(
+          timeFrame3,
+          superLong.isMacdDivergence,
+          superLong.isRsiDivergence,
+          superLong.isUoDivergence
+        )
+      : "";
+    return `${
+      symbol.split("/")[0]
+    } - ${trend} ${superLongText}  ${longText} ${shortText} ${value}`;
   }
 
   return "";
@@ -87,7 +113,7 @@ function startJob(chatId) {
 
   const job = setInterval(() => {
     jobFunction(chatId);
-  }, 90000); // 120000 ms = 2 minutes
+  }, 300000); // 120000 ms = 2 minutes
   jobs.set(chatId, job);
 }
 

@@ -4,7 +4,7 @@ const TelegramBot = require("node-telegram-bot-api");
 const { getData } = require("./dataFetch.js");
 require("dotenv").config();
 
-const token = process.env.FIVE_MIN_BOT;
+const token = process.env.FIRST_BOT;
 const bot = new TelegramBot(token, { polling: true });
 
 // Store jobs in a Map to manage multiple chats
@@ -30,13 +30,10 @@ function getText(timeframe, isMacdDivergence, isRsiDivergence, isUoDivergence) {
   return `[${timeframe}: ${arr.toString()}]`;
 }
 
-function getPremiumText(value) {
+function getPremiumText(value, text) {
   const num = value * 100;
-  if (num < 0.1) {
-    return "";
-  }
 
-  return num >= 0.2 ? "✅✅" : "✅";
+  return num >= 0.2 && num < 0.1 ? "" : `✅ - ${text}`;
 }
 
 async function getPremiumIndex(symbol, interval = "1m", trend) {
@@ -53,9 +50,11 @@ async function getPremiumIndex(symbol, interval = "1m", trend) {
   const latestHigh = latestData[2];
   const secondHigh = secondLatestData[2];
   const low = latestLow > secondLow ? secondLow : latestLow;
+  const lowT = latestLow > secondLow ? "prev" : "now";
   const high = latestHigh > secondHigh ? latestHigh : secondHigh;
+  const highT = latestHigh > secondHigh ? "now" : "prev";
   const trendPremium = trend === "L" ? low : high;
-  return getPremiumText(trendPremium);
+  return getPremiumText(trendPremium, trend === "L" ? lowT : highT);
 }
 
 async function processSymbol(exchange, symbol) {
@@ -67,20 +66,24 @@ async function processSymbol(exchange, symbol) {
   const long = await getData(exchange, symbol, timeFrame2, since);
   if (short && long && short.trend === long.trend) {
     const premiumText = await getPremiumIndex(symbol, "1m", long.trend);
-    const shortText = getText(
-      timeFrame1,
-      short.isMacdDivergence,
-      short.isRsiDivergence,
-      short.isUoDivergence
-    );
-    const longText = getText(
-      timeFrame2,
-      long.isMacdDivergence,
-      long.isRsiDivergence,
-      long.isUoDivergence
-    );
-    const shortSym = symbol.split("/")[0];
-    return `${premiumText}${shortSym} - ${long.trend} ${shortText} ${longText} ${long.bollengerValue}`;
+    if (premiumText.length !== 0) {
+      const shortText = getText(
+        timeFrame1,
+        short.isMacdDivergence,
+        short.isRsiDivergence,
+        short.isUoDivergence
+      );
+      const longText = getText(
+        timeFrame2,
+        long.isMacdDivergence,
+        long.isRsiDivergence,
+        long.isUoDivergence
+      );
+      const shortSym = symbol.split("/")[0];
+      return `${premiumText}${shortSym} - ${long.trend} ${shortText} ${longText} ${long.bollengerValue}`;
+    } else {
+      return "";
+    }
   }
 
   return "";

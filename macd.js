@@ -43,14 +43,14 @@ function checkMacdDivergence(
   rsiData,
   uoData
 ) {
-  const latestMACD = macd.slice(-100);
-  const latestRsi = rsiData.slice(-100);
-  const latestHist = histData.slice(-100);
-  const latestUo = uoData.slice(-100);
+  const latestMACD = macd.slice(-180);
+  const latestRsi = rsiData.slice(-180);
+  const latestHist = histData.slice(-180);
+  const latestUo = uoData.slice(-180);
   const latestBollinger =
     trend === "H"
-      ? bollingerData.bollingerHigh.slice(-100)
-      : bollingerData.bollingerLow.slice(-100);
+      ? bollingerData.bollingerHigh.slice(-180)
+      : bollingerData.bollingerLow.slice(-180);
   const isMacdDivergence =
     trend === "H"
       ? checkMacdPivotHigh(latestHist, latestMACD, latestBollinger)
@@ -73,16 +73,17 @@ function checkMacdPivotHigh(data, macd, bollenger) {
   const arr = [];
   const latestData = data[data.length - 1];
   const latestMacd = macd[macd.length - 1].macdLine;
-  for (let i = data.length - 3; i >= 3; i--) {
+  for (let i = data.length - 4; i >= 4; i--) {
     const currentHist = data[i];
     if (currentHist.close > latestData.high) {
       break;
     } else if (
-      data[i - 1].high <= currentHist.high &&
+      data[i - 3].high <= currentHist.high &&
       data[i - 2].high <= currentHist.high &&
+      data[i - 1].high <= currentHist.high &&
       data[i + 1].high <= currentHist.high &&
       data[i + 2].high <= currentHist.high &&
-      currentHist.high >= bollenger[i]
+      data[i + 3].high <= currentHist.high
     ) {
       const currentMACD = macd[i].macdLine;
       arr.push({
@@ -118,17 +119,18 @@ function checkMacdPivotLow(data, macd, bollenger) {
   const latestData = data[data.length - 1];
   const latestMacd = macd[macd.length - 1].macdLine;
 
-  for (let i = data.length - 3; i >= 3; i--) {
+  for (let i = data.length - 4; i >= 4; i--) {
     const currentHist = data[i];
 
     if (currentHist.close < latestData.low) {
       break;
     } else if (
-      data[i - 1].low >= currentHist.low &&
+      data[i - 3].low >= currentHist.low &&
       data[i - 2].low >= currentHist.low &&
+      data[i - 1].low >= currentHist.low &&
       data[i + 1].low >= currentHist.low &&
       data[i + 2].low >= currentHist.low &&
-      currentHist.low <= bollenger[i]
+      data[i + 3].low >= currentHist.low
     ) {
       const currentMACD = macd[i].macdLine;
       arr.push({
