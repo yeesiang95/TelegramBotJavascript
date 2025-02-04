@@ -1,17 +1,28 @@
 const ccxt = require("ccxt");
-const symbols = require("./symbols.json");
+const symbols = require("./symbols2.json");
 const TelegramBot = require("node-telegram-bot-api");
 const { getData } = require("./dataFetch.js");
 require("dotenv").config();
 
-const token = process.env.FIRST_BOT;
+const token = process.env.FIVE_MIN_BOT;
 const bot = new TelegramBot(token, { polling: true });
 
 // Store jobs in a Map to manage multiple chats
 const jobs = new Map();
 
-function getText(timeframe, isMacdDivergence, isRsiDivergence, isUoDivergence) {
-  if (!isMacdDivergence && !isRsiDivergence && !isUoDivergence) {
+function getText(
+  timeframe,
+  isMacdDivergence,
+  isRsiDivergence,
+  isUoDivergence,
+  isKdjDivergence
+) {
+  if (
+    !isMacdDivergence &&
+    !isRsiDivergence &&
+    !isUoDivergence &&
+    !isKdjDivergence
+  ) {
     return "";
   }
 
@@ -23,6 +34,10 @@ function getText(timeframe, isMacdDivergence, isRsiDivergence, isUoDivergence) {
     arr.push("R");
   }
 
+  if (isKdjDivergence) {
+    arr.push("K");
+  }
+
   if (isUoDivergence) {
     arr.push("U");
   }
@@ -30,57 +45,57 @@ function getText(timeframe, isMacdDivergence, isRsiDivergence, isUoDivergence) {
   return `[${timeframe}: ${arr.toString()}]`;
 }
 
-function getPremiumText(value, text) {
-  const num = value * 100;
-
-  return num >= 0.2 && num < 0.1 ? "" : `✅ - ${text}`;
-}
-
-async function getPremiumIndex(symbol, interval = "1m", trend) {
-  const sym = symbol.replace("/", "");
-  const url = `https://fapi.binance.com/fapi/v1/premiumIndexKlines?symbol=${sym}&interval=${interval}`;
-
-  const response = await fetch(url);
-  const data = await response.json();
-  const latestData = data[data.length - 1];
-  const secondLatestData = data[data.length - 2];
-
-  const latestLow = latestData[3];
-  const secondLow = secondLatestData[3];
-  const latestHigh = latestData[2];
-  const secondHigh = secondLatestData[2];
-  const low = latestLow > secondLow ? secondLow : latestLow;
-  const lowT = latestLow > secondLow ? "prev" : "now";
-  const high = latestHigh > secondHigh ? latestHigh : secondHigh;
-  const highT = latestHigh > secondHigh ? "now" : "prev";
-  const trendPremium = trend === "L" ? low : high;
-  return getPremiumText(trendPremium, trend === "L" ? lowT : highT);
+function getValue(
+  isMacdDivergence,
+  isRsiDivergence,
+  isUoDivergence,
+  isKdjDivergence
+) {
+  return isMacdDivergence + isRsiDivergence + isUoDivergence + isKdjDivergence;
 }
 
 async function processSymbol(exchange, symbol) {
   const timeFrame1 = "1m";
-  const timeFrame2 = "5m";
-  const since = exchange.parse8601(new Date().getTime());
+  const timeFrame2 = "15m";
+  // const timeFrame3 = "1m";
 
-  const short = await getData(exchange, symbol, timeFrame1, since);
-  const long = await getData(exchange, symbol, timeFrame2, since);
+  const short = await getData(exchange, symbol, timeFrame1, "short");
+  const long = await getData(exchange, symbol, timeFrame2, "long");
+
   if (short && long && short.trend === long.trend) {
-    const premiumText = await getPremiumIndex(symbol, "1m", long.trend);
-    if (premiumText.length !== 0) {
-      const shortText = getText(
-        timeFrame1,
-        short.isMacdDivergence,
-        short.isRsiDivergence,
-        short.isUoDivergence
-      );
-      const longText = getText(
-        timeFrame2,
-        long.isMacdDivergence,
-        long.isRsiDivergence,
-        long.isUoDivergence
-      );
-      const shortSym = symbol.split("/")[0];
-      return `${premiumText}${shortSym} - ${long.trend} ${shortText} ${longText} ${long.bollengerValue}`;
+    const shortText = getText(
+      timeFrame1,
+      short.isMacdDivergence,
+      short.isRsiDivergence,
+      short.isUoDivergence,
+      short.isKdjDivergence
+    );
+    const longText = getText(
+      timeFrame2,
+      long.isMacdDivergence,
+      long.isRsiDivergence,
+      long.isUoDivergence,
+      long.isKdjDivergence
+    );
+
+    const shortValue = getValue(
+      short.isMacdDivergence,
+      short.isRsiDivergence,
+      short.isUoDivergence,
+      short.isKdjDivergence
+    );
+
+    const longValue = getValue(
+      long.isMacdDivergence,
+      long.isRsiDivergence,
+      long.isUoDivergence,
+      long.isKdjDivergence
+    );
+
+    if (shortValue >= 3 && longValue >= 3) {
+      return `${symbol.split("/")[0]} - ${
+        long.trend
+      } ${longText} ${shortText} ${long.bollengerValue}`;
     } else {
       return "";
     }
@@ -102,7 +117,7 @@ async function jobFunction(chatId) {
   const filteredResult = results
     .filter((item) => item !== "")
     .sort((a, b) => b.length - a.length);
-
+  console.log(filteredResult);
   if (filteredResult.length !== 0) {
     const response = filteredResult.join("\n");
     bot.sendMessage(chatId, response);

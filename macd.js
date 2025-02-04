@@ -1,3 +1,4 @@
+const { checkKdjPivotHigh, checkKdjPivotLow } = require("./kdj");
 const { checkRsiPivotHigh, checkRsiPivotLow } = require("./rsi");
 const { checkUoPivotHigh, checkUoPivotLow } = require("./uo");
 
@@ -41,16 +42,20 @@ function checkMacdDivergence(
   histData,
   bollingerData,
   rsiData,
-  uoData
+  uoData,
+  kdjData,
+  timeframeType
 ) {
-  const latestMACD = macd.slice(-180);
-  const latestRsi = rsiData.slice(-180);
-  const latestHist = histData.slice(-180);
-  const latestUo = uoData.slice(-180);
+  const length = timeframeType === "short" ? -50 : -180;
+  const latestMACD = macd.slice(length);
+  const latestRsi = rsiData.slice(length);
+  const latestHist = histData.slice(length);
+  const latestUo = uoData.slice(length);
+  const latestKdj = kdjData.slice(length);
   const latestBollinger =
     trend === "H"
-      ? bollingerData.bollingerHigh.slice(-180)
-      : bollingerData.bollingerLow.slice(-180);
+      ? bollingerData.bollingerHigh.slice(length)
+      : bollingerData.bollingerLow.slice(length);
   const isMacdDivergence =
     trend === "H"
       ? checkMacdPivotHigh(latestHist, latestMACD, latestBollinger)
@@ -66,7 +71,12 @@ function checkMacdDivergence(
       ? checkUoPivotHigh(latestHist, latestUo, latestBollinger)
       : checkUoPivotLow(latestHist, latestUo, latestBollinger);
 
-  return { isMacdDivergence, isRsiDivergence, isUoDivergence };
+  const isKdjDivergence =
+    trend === "H"
+      ? checkKdjPivotHigh(latestHist, latestKdj, latestBollinger)
+      : checkKdjPivotLow(latestHist, latestKdj, latestBollinger);
+
+  return { isMacdDivergence, isRsiDivergence, isUoDivergence, isKdjDivergence };
 }
 
 function checkMacdPivotHigh(data, macd, bollenger) {

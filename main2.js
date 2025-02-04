@@ -10,8 +10,19 @@ const bot = new TelegramBot(token, { polling: true });
 // Store jobs in a Map to manage multiple chats
 const jobs = new Map();
 
-function getText(timeframe, isMacdDivergence, isRsiDivergence, isUoDivergence) {
-  if (!isMacdDivergence && !isRsiDivergence && !isUoDivergence) {
+function getText(
+  timeframe,
+  isMacdDivergence,
+  isRsiDivergence,
+  isUoDivergence,
+  isKdjDivergence
+) {
+  if (
+    !isMacdDivergence &&
+    !isRsiDivergence &&
+    !isUoDivergence &&
+    !isKdjDivergence
+  ) {
     return "";
   }
 
@@ -23,6 +34,10 @@ function getText(timeframe, isMacdDivergence, isRsiDivergence, isUoDivergence) {
     arr.push("R");
   }
 
+  if (isKdjDivergence) {
+    arr.push("K");
+  }
+
   if (isUoDivergence) {
     arr.push("U");
   }
@@ -30,8 +45,13 @@ function getText(timeframe, isMacdDivergence, isRsiDivergence, isUoDivergence) {
   return `[${timeframe}: ${arr.toString()}]`;
 }
 
-function getValue(isMacdDivergence, isRsiDivergence, isUoDivergence) {
-  return isMacdDivergence + isRsiDivergence + isUoDivergence;
+function getValue(
+  isMacdDivergence,
+  isRsiDivergence,
+  isUoDivergence,
+  isKdjDivergence
+) {
+  return isMacdDivergence + isRsiDivergence + isUoDivergence + isKdjDivergence;
 }
 
 async function processSymbol(exchange, symbol) {
@@ -39,46 +59,40 @@ async function processSymbol(exchange, symbol) {
   const timeFrame2 = "15m";
   // const timeFrame3 = "1m";
 
-  const short = await getData(exchange, symbol, timeFrame1);
-  const long = await getData(exchange, symbol, timeFrame2);
+  const short = await getData(exchange, symbol, timeFrame1, "short");
+  const long = await getData(exchange, symbol, timeFrame2, "long");
 
   if (short && long && short.trend === long.trend) {
     const shortText = getText(
       timeFrame1,
       short.isMacdDivergence,
       short.isRsiDivergence,
-      short.isUoDivergence
+      short.isUoDivergence,
+      short.isKdjDivergence
     );
     const longText = getText(
       timeFrame2,
       long.isMacdDivergence,
       long.isRsiDivergence,
-      long.isUoDivergence
+      long.isUoDivergence,
+      long.isKdjDivergence
     );
 
     const shortValue = getValue(
       short.isMacdDivergence,
       short.isRsiDivergence,
-      short.isUoDivergence
+      short.isUoDivergence,
+      short.isKdjDivergence
     );
 
     const longValue = getValue(
       long.isMacdDivergence,
       long.isRsiDivergence,
-      long.isUoDivergence
+      long.isUoDivergence,
+      long.isKdjDivergence
     );
 
-    // const superShort = await getData(exchange, symbol, timeFrame3);
-    // const superShortText = superShort
-    //   ? getText(
-    //       timeFrame3,
-    //       superShort.isMacdDivergence,
-    //       superShort.isRsiDivergence,
-    //       superShort.isUoDivergence
-    //     )
-    //   : "";
-
-    if (shortValue >= 2 && longValue >= 2) {
+    if (shortValue >= 3 && longValue >= 3) {
       return `${symbol.split("/")[0]} - ${
         long.trend
       } ${longText} ${shortText} ${long.bollengerValue}`;
@@ -103,7 +117,7 @@ async function jobFunction(chatId) {
   const filteredResult = results
     .filter((item) => item !== "")
     .sort((a, b) => b.length - a.length);
-
+  console.log(filteredResult);
   if (filteredResult.length !== 0) {
     const response = filteredResult.join("\n");
     bot.sendMessage(chatId, response);

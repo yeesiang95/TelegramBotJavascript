@@ -6,6 +6,7 @@ const { calculateMACD, checkMacdDivergence } = require("./macd");
 const { calculateRSI } = require("./rsi");
 const { RSI } = require("technicalindicators");
 const { calculateUO } = require("./uo");
+const { calculateKDJ } = require("./kdj");
 
 const rsiPeriod = 14;
 
@@ -27,6 +28,7 @@ async function fetchOHLCV(exchange, symbol, timeframe) {
       volume: candle[5],
     }));
   } catch (error) {
+    return [];
     console.log("Error fetching OHLCV data:", error);
   }
 }
@@ -36,13 +38,17 @@ async function getCurrentPrice(exchange, symbol) {
     const ticker = await exchange.fetchTicker(symbol);
     return ticker["last"];
   } catch (e) {
+    return null;
     console.error("Error fetching price");
   }
 }
 
-async function getData(exchange, symbol, timeframe, since) {
+async function getData(exchange, symbol, timeframe, since, timeframeType) {
   const historicalData = await fetchOHLCV(exchange, symbol, timeframe, since);
   const currentPrice = await getCurrentPrice(exchange, symbol);
+  if (!historicalData && !currentPrice) {
+    return null;
+  }
   const closingPrices = historicalData.map((item) => item.close);
   const bollengerData = calculateBollingerBands(closingPrices);
 
@@ -51,7 +57,8 @@ async function getData(exchange, symbol, timeframe, since) {
     bollengerData,
     symbol,
     historicalData,
-    closingPrices
+    closingPrices,
+    timeframeType
   );
 
   return res;
@@ -62,7 +69,8 @@ function checkPriceAction(
   bollingerData,
   symbol,
   historicalData,
-  closingPrices
+  closingPrices,
+  timeframeType
 ) {
   const result = checkPriceVsBollinger(currentPrice, bollingerData, symbol);
 
@@ -73,6 +81,8 @@ function checkPriceAction(
   const rsiData = RSI.calculate({ values: closingPrices, period: rsiPeriod });
   const macdData = calculateMACD(closingPrices);
   const uoData = calculateUO(historicalData);
+  const kdjData = calculateKDJ(historicalData);
+  const jData = kdjData.jValues;
 
   const res = checkMacdDivergence(
     macdData,
@@ -80,10 +90,13 @@ function checkPriceAction(
     historicalData,
     bollingerData,
     rsiData,
-    uoData
+    uoData,
+    jData,
+    timeframeType
   );
   return {
     isOutBollengerBand: true,
+    isKdjDivergence: res.isKdjDivergence,
     isMacdDivergence: res.isMacdDivergence,
     isRsiDivergence: res.isRsiDivergence,
     isUoDivergence: res.isUoDivergence,
