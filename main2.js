@@ -55,7 +55,7 @@ function getValue(
 }
 
 async function processSymbol(exchange, symbol) {
-  const timeFrame1 = "1m";
+  const timeFrame1 = "5m";
   const timeFrame2 = "15m";
   // const timeFrame3 = "1m";
 

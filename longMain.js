@@ -1,10 +1,10 @@
 const ccxt = require("ccxt");
-const symbols = require("./symbols2.json");
+const symbols = require("./symbols.json");
 const TelegramBot = require("node-telegram-bot-api");
 const { getData } = require("./dataFetch.js");
 require("dotenv").config();
 
-const token = process.env.FIVE_MIN_BOT;
+const token = process.env.ONE_HOUR_BOT;
 const bot = new TelegramBot(token, { polling: true });
 
 // Store jobs in a Map to manage multiple chats
@@ -55,50 +55,46 @@ function getValue(
 }
 
 async function processSymbol(exchange, symbol) {
-  const timeFrame1 = "5m";
-  const timeFrame2 = "15m";
-  // const timeFrame3 = "1m";
+  const timeFrame1 = "1h";
+  const timeFrame2 = "4h";
 
   const short = await getData(exchange, symbol, timeFrame1, "short");
   const long = await getData(exchange, symbol, timeFrame2, "long");
 
-  if (short && long && short.trend === long.trend) {
-    const shortText = getText(
-      timeFrame1,
-      short.isMacdDivergence,
-      short.isRsiDivergence,
-      short.isUoDivergence,
-      short.isKdjDivergence
-    );
-    const longText = getText(
-      timeFrame2,
-      long.isMacdDivergence,
-      long.isRsiDivergence,
-      long.isUoDivergence,
-      long.isKdjDivergence
-    );
+  if (short || long) {
+    const shortText = short
+      ? getText(
+          timeFrame1,
+          short.isMacdDivergence,
+          short.isRsiDivergence,
+          short.isUoDivergence,
+          short.isKdjDivergence
+        )
+      : "";
+    const longText = long
+      ? getText(
+          timeFrame2,
+          long.isMacdDivergence,
+          long.isRsiDivergence,
+          long.isUoDivergence,
+          long.isKdjDivergence
+        )
+      : "";
 
-    const shortValue = getValue(
-      short.isMacdDivergence,
-      short.isRsiDivergence,
-      short.isUoDivergence,
-      short.isKdjDivergence
-    );
+    const trend = short ? short.trend : long ? long.trend : "";
+    const value = short
+      ? short.bollengerValue
+      : long
+      ? long.bollengerValue
+      : "";
 
-    const longValue = getValue(
-      long.isMacdDivergence,
-      long.isRsiDivergence,
-      long.isUoDivergence,
-      long.isKdjDivergence
-    );
-
-    if (shortValue >= 3 && longValue >= 3) {
-      return `${symbol.split("/")[0]} - ${
-        long.trend
-      } ${longText} ${shortText} ${long.bollengerValue}`;
-    } else {
+    if (shortText.length === 0 && longText.length === 0) {
       return "";
     }
+
+    return `${
+      symbol.split("/")[0]
+    } - ${trend} ${longText} ${shortText} ${value}`;
   }
 
   return "";
@@ -117,7 +113,7 @@ async function jobFunction(chatId) {
   const filteredResult = results
     .filter((item) => item !== "")
     .sort((a, b) => b.length - a.length);
-  console.log(filteredResult);
+
   if (filteredResult.length !== 0) {
     const response = filteredResult.join("\n");
     bot.sendMessage(chatId, response);
@@ -132,7 +128,7 @@ function startJob(chatId) {
 
   const job = setInterval(() => {
     jobFunction(chatId);
-  }, 90000); // 120000 ms = 2 minutes
+  }, 300000); // 120000 ms = 2 minutes
   jobs.set(chatId, job);
 }
 

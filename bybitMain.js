@@ -1,10 +1,10 @@
 const ccxt = require("ccxt");
-const symbols = require("./symbols2.json");
+// const symbols = require("./symbols2.json");
 const TelegramBot = require("node-telegram-bot-api");
 const { getData } = require("./dataFetch.js");
 require("dotenv").config();
 
-const token = process.env.FIVE_MIN_BOT;
+const token = "7759126314:AAE-H0wkcmMgBLuSbQzyoPsQulXqKqX1j-w";
 const bot = new TelegramBot(token, { polling: true });
 
 // Store jobs in a Map to manage multiple chats
@@ -55,14 +55,22 @@ function getValue(
 }
 
 async function processSymbol(exchange, symbol) {
-  const timeFrame1 = "5m";
-  const timeFrame2 = "15m";
+  const timeFrame1 = "1m";
+  const timeFrame2 = "5m";
+  const timeFrame3 = "15m";
   // const timeFrame3 = "1m";
 
   const short = await getData(exchange, symbol, timeFrame1, "short");
-  const long = await getData(exchange, symbol, timeFrame2, "long");
+  const mid = await getData(exchange, symbol, timeFrame2, "long");
+  const long = await getData(exchange, symbol, timeFrame3, "long");
 
-  if (short && long && short.trend === long.trend) {
+  if (
+    short &&
+    long &&
+    mid &&
+    short.trend === long.trend &&
+    short.trend === mid.trend
+  ) {
     const shortText = getText(
       timeFrame1,
       short.isMacdDivergence,
@@ -70,8 +78,17 @@ async function processSymbol(exchange, symbol) {
       short.isUoDivergence,
       short.isKdjDivergence
     );
-    const longText = getText(
+
+    const midText = getText(
       timeFrame2,
+      mid.isMacdDivergence,
+      mid.isRsiDivergence,
+      mid.isUoDivergence,
+      mid.isKdjDivergence
+    );
+
+    const longText = getText(
+      timeFrame3,
       long.isMacdDivergence,
       long.isRsiDivergence,
       long.isUoDivergence,
@@ -85,6 +102,13 @@ async function processSymbol(exchange, symbol) {
       short.isKdjDivergence
     );
 
+    const midValue = getValue(
+      mid.isMacdDivergence,
+      mid.isRsiDivergence,
+      mid.isUoDivergence,
+      mid.isKdjDivergence
+    );
+
     const longValue = getValue(
       long.isMacdDivergence,
       long.isRsiDivergence,
@@ -92,10 +116,8 @@ async function processSymbol(exchange, symbol) {
       long.isKdjDivergence
     );
 
-    if (shortValue >= 3 && longValue >= 3) {
-      return `${symbol.split("/")[0]} - ${
-        long.trend
-      } ${longText} ${shortText} ${long.bollengerValue}`;
+    if (shortValue >= 3 && longValue >= 3 && midValue >= 3) {
+      return `${symbol.split("/")[0]} - ${long.trend}`;
     } else {
       return "";
     }
@@ -105,11 +127,13 @@ async function processSymbol(exchange, symbol) {
 }
 
 async function jobFunction(chatId) {
-  const exchange = new ccxt.binance({
+  const exchange = new ccxt.bybit({
     options: {
       defaultType: "future", // Set the default type to 'future'
     },
   });
+
+  const symbols = ["BTC/USDT", "ETH/USDT"];
 
   const ohlcvData = symbols.map((symbol) => processSymbol(exchange, symbol));
 
@@ -132,7 +156,7 @@ function startJob(chatId) {
 
   const job = setInterval(() => {
     jobFunction(chatId);
-  }, 90000); // 120000 ms = 2 minutes
+  }, 10000); // 120000 ms = 2 minutes
   jobs.set(chatId, job);
 }
 
